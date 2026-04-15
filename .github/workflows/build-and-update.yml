@@ -1,0 +1,95 @@
+name: Build & Update Cask
+
+on:
+  schedule:
+    - cron: '0 * * * *'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout tap repo
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get latest upstream tag
+        id: upstream
+        run: |
+          LATEST=$(git ls-remote --tags --sort='-version:refname' \
+            https://github.com/permissionlesstech/bitchat.git \
+            | grep -v '{}' | head -1 | awk '{print $2}' | sed 's|refs/tags/||')
+          echo "tag=$LATEST" >> $GITHUB_OUTPUT
+
+      - name: Check if already built
+        id: check
+        run: |
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            "https://api.github.com/repos/${{ github.repository }}/releases/tags/${{ steps.upstream.outputs.tag }}")
+          [ "$STATUS" = "200" ] && echo "exists=true" >> $GITHUB_OUTPUT || echo "exists=false" >> $GITHUB_OUTPUT
+
+      - name: Checkout bitchat source
+        if: steps.check.outputs.exists == 'false'
+        uses: actions/checkout@v4
+        with:
+          repository: permissionlesstech/bitchat
+          ref: ${{ steps.upstream.outputs.tag }}
+          path: bitchat-src
+
+      - name: Build
+        if: steps.check.outputs.exists == 'false'
+        working-directory: bitchat-src
+        run: |
+          xcodebuild \
+            -project bitchat.xcodeproj \
+            -scheme "bitchat (macOS)" \
+            -configuration Release \
+            -derivedDataPath ./build \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            ARCHS="arm64" \
+            VALID_ARCHS="arm64" \
+            ONLY_ACTIVE_ARCH=YES \
+            build
+
+      - name: Zip & get SHA256
+        if: steps.check.outputs.exists == 'false'
+        id: zip
+        run: |
+          TAG=${{ steps.upstream.outputs.tag }}
+          cd bitchat-src/build/Build/Products/Release
+          zip -r bitchat-macos-${TAG}.zip bitchat.app
+          SHA=$(shasum -a 256 bitchat-macos-${TAG}.zip | awk '{print $1}')
+          echo "sha=$SHA" >> $GITHUB_OUTPUT
+          echo "zip=bitchat-src/build/Build/Products/Release/bitchat-macos-${TAG}.zip" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        if: steps.check.outputs.exists == 'false'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.upstream.outputs.tag }}
+          name: bitchat ${{ steps.upstream.outputs.tag }} (macOS)
+          body: "Unofficial macOS build of upstream tag ${{ steps.upstream.outputs.tag }}"
+          files: ${{ steps.zip.outputs.zip }}
+
+      - name: Update Cask formula
+        if: steps.check.outputs.exists == 'false'
+        run: |
+          TAG=${{ steps.upstream.outputs.tag }}
+          VERSION=${TAG#v}
+          SHA=${{ steps.zip.outputs.sha }}
+
+          sed -i '' "s/version \".*\"/version \"${VERSION}\"/" Casks/bitchat.rb
+          sed -i '' "s/sha256 \".*\"/sha256 \"${SHA}\"/" Casks/bitchat.rb
+
+          git config user.email "actions@github.com"
+          git config user.name "GitHub Actions"
+          git add Casks/bitchat.rb
+          git commit -m "chore: update bitchat to ${TAG}"
+          git push
