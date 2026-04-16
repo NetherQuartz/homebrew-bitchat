@@ -9,6 +9,4 @@ cask "bitchat" do
   homepage "https://github.com/permissionlesstech/bitchat"
 
   app "bitchat.app"
-
-  quarantine false
 end
