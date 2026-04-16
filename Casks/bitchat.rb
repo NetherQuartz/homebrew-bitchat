@@ -9,4 +9,10 @@ cask "bitchat" do
   homepage "https://github.com/permissionlesstech/bitchat"
 
   app "bitchat.app"
+
+  postflight do
+    system_command "/usr/bin/xattr",
+      args: ["-dr", "com.apple.quarantine", "#{appdir}/bitchat.app"],
+      sudo: false
+  end
 end
