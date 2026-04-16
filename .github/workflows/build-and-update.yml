@@ -13,7 +13,7 @@ jobs:
 
     steps:
       - name: Checkout tap repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
@@ -35,7 +35,7 @@ jobs:
 
       - name: Checkout bitchat source
         if: steps.check.outputs.exists == 'false'
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: permissionlesstech/bitchat
           ref: ${{ steps.upstream.outputs.tag }}
@@ -71,7 +71,7 @@ jobs:
 
       - name: Create GitHub Release
         if: steps.check.outputs.exists == 'false'
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ steps.upstream.outputs.tag }}
           name: bitchat ${{ steps.upstream.outputs.tag }} (macOS)
