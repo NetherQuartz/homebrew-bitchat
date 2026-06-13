@@ -1,6 +1,6 @@
 cask "bitchat" do
-  version "1.5.1"
-  sha256 "845d8306e50e49cf5d910cdb404411fdca72e49fa9ed07e6b41abb8eb5a02099"
+  version "1.5.3"
+  sha256 "cb5fe1d79dbc0c8273e30f4ca7ebe42c6892b9b7bf8360f31f4643036d2bf0d7"
 
   url "https://github.com/NetherQuartz/homebrew-bitchat/releases/download/v#{version}/bitchat-macos-v#{version}.zip"
 
