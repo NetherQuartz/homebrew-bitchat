@@ -34,7 +34,7 @@ brew untap NetherQuartz/bitchat
 
 ## How it works
 
-A GitHub Actions workflow checks the upstream repository for new tags every hour.
+A GitHub Actions workflow checks the upstream repository for new tags every day.
 When a new release is detected, it automatically:
 1. Builds the macOS app from source
 2. Creates a new GitHub Release with the binary
